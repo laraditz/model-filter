@@ -1,0 +1,25 @@
+{
+	"name": "laraditz/model-filter",
+	"description": "A simple eloquent model filter.",
+	"type": "laravel-package",
+	"keywords": [ "laravel", "lumen", "eloquent", "model", "filter" ],
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Raditz Farhan",
+			"email": "raditzfarhan@gmail.com"
+		}
+	],
+	"minimum-stability": "dev",
+	"require": {
+		"php": "^7.2.5",
+		"illuminate/support": "^6.0|^7.0|^8.0",
+		"illuminate/http": "^6.0|^7.0|^8.0",
+		"illuminate/database": "^6.0|^7.0|^8.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Laraditz\\ModelFilter\\": "src/"
+		}
+	}
+}
