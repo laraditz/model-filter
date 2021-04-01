@@ -75,6 +75,21 @@ In your controller, call `filter` method and pass the input data to use the filt
 $users = User::filter($request->all())->get();
 ```
 
+Your request query strings could look like this.
+```
+/users?name=farhan&rank=novice
+```
+
+You could also pass `sort` param to apply sorting for your result.
+```
+/users?name=farhan&rank=novice&sort=name,level
+```
+
+Sort desc by adding `-` symbol in front of the field name
+```
+/users?name=farhan&rank=novice&sort=-name,level
+```
+
 That's it!
 
 ## Credits

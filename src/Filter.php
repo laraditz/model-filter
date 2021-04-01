@@ -4,6 +4,7 @@ namespace Laraditz\ModelFilter;
 
 use BadMethodCallException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class Filter
 {
@@ -56,5 +57,22 @@ class Filter
                 $name
             ));
         }
+    }
+
+    /**
+     * Add sort function through query string.
+     *
+     * @param  string  $value
+     * 
+     */
+    public function sort(string $value)
+    {
+        return collect(explode(',', $value))->each(function ($item, $key) {
+            if (Str::startsWith($item, '-')) {
+                return $this->query->orderByDesc(Str::of($item)->replace('-', ''));
+            } else {
+                return $this->query->orderBy($item);
+            }
+        });
     }
 }
