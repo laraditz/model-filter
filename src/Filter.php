@@ -48,15 +48,7 @@ class Filter
      */
     public function __call($name, $arguments)
     {
-        if (method_exists($this->query, $name)) {
-            $this->query->$name(...$arguments);
-        } else {
-            throw new BadMethodCallException(sprintf(
-                'Method %s::%s does not exist.',
-                get_class(),
-                $name
-            ));
-        }
+        $this->query->$name(...$arguments);
     }
 
     /**
