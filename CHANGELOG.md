@@ -2,6 +2,11 @@
 
 All notable changes to `Laravel Model Filter` will be documented in this file.
 
+
+## Version 1.0.4 (2024-05-15)
+### Added
+- Add support for Laravel 11.
+
 ## Version 1.0.3 (2023-04-14)
 ### Added
 - Add support for Laravel 10.
