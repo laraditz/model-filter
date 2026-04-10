@@ -4,7 +4,6 @@
   "type": "laravel-package",
   "keywords": [
     "laravel",
-    "lumen",
     "eloquent",
     "model",
     "filter"
@@ -17,15 +16,40 @@
     }
   ],
   "minimum-stability": "dev",
+  "prefer-stable": true,
   "require": {
-    "php": "^7.4|^8.0",
-    "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
-    "illuminate/http": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
-    "illuminate/database": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0"
+    "php": "^8.1",
+    "illuminate/support": "^9.0|^10.0|^11.0|^12.0|^13.0",
+    "illuminate/database": "^9.0|^10.0|^11.0|^12.0|^13.0"
+  },
+  "require-dev": {
+    "pestphp/pest": "^3.0",
+    "orchestra/testbench": "^10.0"
   },
   "autoload": {
     "psr-4": {
       "Laraditz\\ModelFilter\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/",
+      "App\\Filters\\": "tests/Fixtures/Filters/"
+    }
+  },
+  "scripts": {
+    "test": "./vendor/bin/pest"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Laraditz\\ModelFilter\\ModelFilterServiceProvider"
+      ]
     }
   }
 }

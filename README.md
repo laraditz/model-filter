@@ -3,94 +3,186 @@
 [![Latest Stable Version](https://poser.pugx.org/laraditz/model-filter/v/stable?format=flat-square)](https://packagist.org/packages/laraditz/model-filter)
 [![Total Downloads](https://img.shields.io/packagist/dt/laraditz/model-filter?style=flat-square)](https://packagist.org/packages/laraditz/model-filter)
 [![License](https://poser.pugx.org/laraditz/model-filter/license?format=flat-square)](https://packagist.org/packages/laraditz/model-filter)
-[![StyleCI](https://github.styleci.io/repos/7548986/shield?style=square)](https://github.com/laraditz/model-filter)
 
-A simple eloquent model filter for Laravel and Lumen.
+A flexible Eloquent model filter for Laravel with operator support, OR grouping, and relationship filtering.
+
+> **v2 breaking change:** Filter params are now namespaced under `filters[]`. See the breaking changes section below.
+
+## Requirements
+
+- PHP 8.1+
+- Laravel 9–13
 
 ## Installation
 
-Via Composer
-
-``` bash
-$ composer require laraditz/model-filter
+```bash
+composer require laraditz/model-filter
 ```
 
-## Configuration
+## Setup
 
-Add filterable trait to your model as below snippet:
+Add the `Filterable` trait to your model and declare a `$filterable` allowlist:
+
 ```php
 use Laraditz\ModelFilter\Filterable;
 
-class User extends Model implements AuthenticatableContract, AuthorizableContract
+class User extends Model
 {
     use Filterable;
-    ...
+
+    protected array $filterable = [
+        'name',
+        'email',
+        'age',
+        'role.name',  // dot-notation opts in to relationship filtering
+    ];
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
 }
 ```
 
-Create filter class under the `App/Filters` folder with `<model_name>Filter` format. For example for `User` model, you will need to create `UserFilter` class. 
+Optionally create `App/Filters/UserFilter` to override specific fields:
 
-Below snippet shows how the `UserFilter` could look like:
 ```php
 namespace App\Filters;
 
 use Laraditz\ModelFilter\Filter;
-use Illuminate\Database\Eloquent\Builder;
 
 class UserFilter extends Filter
 {
-    public function name(string $value)
+    public function name(mixed $value): void
     {
-        $this->where('name', 'LIKE', $value);
-    }
-
-    public function email(string $value)
-    {
-        $this->where('email', 'LIKE', "%$value%");
-    }
-
-    // Filter relationship
-    public function rank($value)
-    {
-        $this->whereHas('rank', function (Builder $query) use ($value) {
-            $query->where('level', 'like', $value);
-        });
+        $this->query->where('name', 'LIKE', $value . '%');
     }
 }
-
 ```
 
-If you want to have more control on which attributes can be filtered, you can add `filterable` array to you model:
-```php
+Fields without a custom method are handled automatically.
 
-protected $filterable = [
-    'name', 'email'
-];
-```
+> **Custom method precedence:** When a custom method exists for a field, it always takes precedence over auto-handling — and it receives only the **value**, not the operator. This means `?filters[age][gte]=18` will call `age('18')` and silently drop the `gte` operator. If you need operator-based filtering for a field, do not define a custom method for it and let auto-handling do the work.
 
 ## Usage
 
-In your controller, call `filter` method and pass the input data to use the filter that you have created.
+Pass `$request->all()` to `filter()`:
+
 ```php
 $users = User::filter($request->all())->get();
 ```
 
-Your request query strings could look like this.
+### Query param format
+
 ```
-/users?name=farhan&rank=novice
+# Shorthand (defaults to eq)
+?filters[name]=farhan
+
+# Explicit operator
+?filters[age][gte]=18
+
+# Multiple filters — all AND'd together
+?filters[status]=active&filters[age][gte]=18
+
+# Multiple operators on same field
+?filters[age][gte]=18&filters[age][lte]=65
+
+# OR group — produces: AND (name LIKE '%far%' OR email LIKE '%far%')
+?filters[or][name][like]=far&filters[or][email][like]=far
+
+# Relationship filtering
+?filters[role.name][eq]=admin
+
+# Sort — top-level, not inside filters[]
+?sort=name,-created_at
 ```
 
-You could also pass `sort` param to apply sorting for your result.
-```
-/users?name=farhan&rank=novice&sort=name,level
+### Supported operators
+
+| Operator  | SQL equivalent      | Notes                                 |
+|-----------|---------------------|---------------------------------------|
+| `eq`      | `= ?`               | Default when no operator bracket used |
+| `neq`     | `!= ?`              |                                       |
+| `like`    | `LIKE ?`            | Value wrapped in `%…%` automatically  |
+| `gt`      | `> ?`               |                                       |
+| `gte`     | `>= ?`              |                                       |
+| `lt`      | `< ?`               |                                       |
+| `lte`     | `<= ?`              |                                       |
+| `in`      | `IN (?)`            | Comma-separated string → array        |
+| `between` | `BETWEEN ? AND ?`   | Comma-separated, exactly 2 values     |
+
+### Relationship filtering
+
+Add the relationship column in dot-notation to `$filterable`:
+
+```php
+protected array $filterable = [
+    'name',
+    'role.name',   // enables ?filters[role.name][...]=...
+];
 ```
 
-Sort desc by adding `-` symbol in front of the field name
+The package translates `role.name` into a `whereHas('role', ...)` clause automatically. All operators work:
+
 ```
-/users?name=farhan&rank=novice&sort=-name,level
+# Users whose role name equals "admin"
+?filters[role.name][eq]=admin
+
+# Users whose role name contains "mod"
+?filters[role.name][like]=mod
+
+# Combined with a direct field filter
+?filters[name][like]=john&filters[role.name][eq]=admin
 ```
 
-That's it!
+Only one level of nesting is supported (`relation.column`). Deeper nesting (e.g. `post.comments.body`) is not supported.
+
+#### Custom relationship query
+
+If you need more control — for example filtering on a condition that spans multiple columns of the related model — define a custom method in your filter class:
+
+```php
+class UserFilter extends Filter
+{
+    /**
+     * ?filters[active_admin]=1
+     * Finds users with an active role named "admin".
+     */
+    public function activeAdmin(mixed $value): void
+    {
+        if (! $value) {
+            return;
+        }
+
+        $this->query->whereHas('role', function ($q): void {
+            $q->where('name', 'admin')
+              ->where('active', true);
+        });
+    }
+}
+```
+
+Remember to add the key to `$filterable`:
+
+```php
+protected array $filterable = ['active_admin'];
+```
+
+### Security
+
+Only fields listed in `$filterable` can be filtered. Unlisted fields are silently ignored. Values are bound via PDO prepared statements — no SQL injection risk.
+
+## Breaking Changes from v1
+
+| Area | v1 | v2 |
+|------|----|----|
+| Query params | `?name=farhan` | `?filters[name]=farhan` |
+| Laravel support | 7–12 | 9–13 |
+| PHP minimum | 7.4 | 8.1 |
+| Lumen | Supported | Dropped |
+| `$filterable` empty | All params passed through | All filtering disabled |
+| `Filter::__call__` | Auto-proxied to Builder | Removed — use `$this->query` directly |
+| `Filter::sort()` | On Filter base class | Moved to Filterable trait |
 
 ## Credits
 
