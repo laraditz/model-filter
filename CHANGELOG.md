@@ -2,6 +2,12 @@
 
 All notable changes to `Laravel Model Filter` will be documented in this file.
 
+## Version 2.0.1 (2026-04-10)
+
+### Changed
+
+- Updated README with `make:filter` command usage, custom method precedence note, and relationship filtering examples
+
 ## Version 2.0.0 (2026-04-10)
 
 ### Added
