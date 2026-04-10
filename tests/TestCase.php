@@ -16,6 +16,11 @@ abstract class TestCase extends OrchestraTestCase
         $this->setUpDatabase();
     }
 
+    protected function getPackageProviders($app): array
+    {
+        return [\Laraditz\ModelFilter\ModelFilterServiceProvider::class];
+    }
+
     protected function setUpDatabase(): void
     {
         $this->app['config']->set('database.default', 'testing');
