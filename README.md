@@ -62,6 +62,8 @@ class UserFilter extends Filter
 
 Fields without a custom method are handled automatically.
 
+> **Custom method precedence:** When a custom method exists for a field, it always takes precedence over auto-handling — and it receives only the **value**, not the operator. This means `?filters[age][gte]=18` will call `age('18')` and silently drop the `gte` operator. If you need operator-based filtering for a field, do not define a custom method for it and let auto-handling do the work.
+
 ## Usage
 
 Pass `$request->all()` to `filter()`:
@@ -108,6 +110,63 @@ $users = User::filter($request->all())->get();
 | `lte`     | `<= ?`              |                                       |
 | `in`      | `IN (?)`            | Comma-separated string → array        |
 | `between` | `BETWEEN ? AND ?`   | Comma-separated, exactly 2 values     |
+
+### Relationship filtering
+
+Add the relationship column in dot-notation to `$filterable`:
+
+```php
+protected array $filterable = [
+    'name',
+    'role.name',   // enables ?filters[role.name][...]=...
+];
+```
+
+The package translates `role.name` into a `whereHas('role', ...)` clause automatically. All operators work:
+
+```
+# Users whose role name equals "admin"
+?filters[role.name][eq]=admin
+
+# Users whose role name contains "mod"
+?filters[role.name][like]=mod
+
+# Combined with a direct field filter
+?filters[name][like]=john&filters[role.name][eq]=admin
+```
+
+Only one level of nesting is supported (`relation.column`). Deeper nesting (e.g. `post.comments.body`) is not supported.
+
+#### Custom relationship query
+
+If you need more control — for example filtering on a condition that spans multiple columns of the related model — define a custom method in your filter class:
+
+```php
+class UserFilter extends Filter
+{
+    /**
+     * ?filters[active_admin]=1
+     * Finds users with an active role named "admin".
+     */
+    public function activeAdmin(mixed $value): void
+    {
+        if (! $value) {
+            return;
+        }
+
+        $this->query->whereHas('role', function ($q): void {
+            $q->where('name', 'admin')
+              ->where('active', true);
+        });
+    }
+}
+```
+
+Remember to add the key to `$filterable`:
+
+```php
+protected array $filterable = ['active_admin'];
+```
 
 ### Security
 
