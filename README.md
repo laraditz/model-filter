@@ -3,94 +3,127 @@
 [![Latest Stable Version](https://poser.pugx.org/laraditz/model-filter/v/stable?format=flat-square)](https://packagist.org/packages/laraditz/model-filter)
 [![Total Downloads](https://img.shields.io/packagist/dt/laraditz/model-filter?style=flat-square)](https://packagist.org/packages/laraditz/model-filter)
 [![License](https://poser.pugx.org/laraditz/model-filter/license?format=flat-square)](https://packagist.org/packages/laraditz/model-filter)
-[![StyleCI](https://github.styleci.io/repos/7548986/shield?style=square)](https://github.com/laraditz/model-filter)
 
-A simple eloquent model filter for Laravel and Lumen.
+A flexible Eloquent model filter for Laravel with operator support, OR grouping, and relationship filtering.
+
+> **v2 breaking change:** Filter params are now namespaced under `filters[]`. See the breaking changes section below.
+
+## Requirements
+
+- PHP 8.1+
+- Laravel 9–13
 
 ## Installation
 
-Via Composer
-
-``` bash
-$ composer require laraditz/model-filter
+```bash
+composer require laraditz/model-filter
 ```
 
-## Configuration
+## Setup
 
-Add filterable trait to your model as below snippet:
+Add the `Filterable` trait to your model and declare a `$filterable` allowlist:
+
 ```php
 use Laraditz\ModelFilter\Filterable;
 
-class User extends Model implements AuthenticatableContract, AuthorizableContract
+class User extends Model
 {
     use Filterable;
-    ...
+
+    protected array $filterable = [
+        'name',
+        'email',
+        'age',
+        'role.name',  // dot-notation opts in to relationship filtering
+    ];
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
 }
 ```
 
-Create filter class under the `App/Filters` folder with `<model_name>Filter` format. For example for `User` model, you will need to create `UserFilter` class. 
+Optionally create `App/Filters/UserFilter` to override specific fields:
 
-Below snippet shows how the `UserFilter` could look like:
 ```php
 namespace App\Filters;
 
 use Laraditz\ModelFilter\Filter;
-use Illuminate\Database\Eloquent\Builder;
 
 class UserFilter extends Filter
 {
-    public function name(string $value)
+    public function name(mixed $value): void
     {
-        $this->where('name', 'LIKE', $value);
-    }
-
-    public function email(string $value)
-    {
-        $this->where('email', 'LIKE', "%$value%");
-    }
-
-    // Filter relationship
-    public function rank($value)
-    {
-        $this->whereHas('rank', function (Builder $query) use ($value) {
-            $query->where('level', 'like', $value);
-        });
+        $this->query->where('name', 'LIKE', $value . '%');
     }
 }
-
 ```
 
-If you want to have more control on which attributes can be filtered, you can add `filterable` array to you model:
-```php
-
-protected $filterable = [
-    'name', 'email'
-];
-```
+Fields without a custom method are handled automatically.
 
 ## Usage
 
-In your controller, call `filter` method and pass the input data to use the filter that you have created.
+Pass `$request->all()` to `filter()`:
+
 ```php
 $users = User::filter($request->all())->get();
 ```
 
-Your request query strings could look like this.
+### Query param format
+
 ```
-/users?name=farhan&rank=novice
+# Shorthand (defaults to eq)
+?filters[name]=farhan
+
+# Explicit operator
+?filters[age][gte]=18
+
+# Multiple filters — all AND'd together
+?filters[status]=active&filters[age][gte]=18
+
+# Multiple operators on same field
+?filters[age][gte]=18&filters[age][lte]=65
+
+# OR group — produces: AND (name LIKE '%far%' OR email LIKE '%far%')
+?filters[or][name][like]=far&filters[or][email][like]=far
+
+# Relationship filtering
+?filters[role.name][eq]=admin
+
+# Sort — top-level, not inside filters[]
+?sort=name,-created_at
 ```
 
-You could also pass `sort` param to apply sorting for your result.
-```
-/users?name=farhan&rank=novice&sort=name,level
-```
+### Supported operators
 
-Sort desc by adding `-` symbol in front of the field name
-```
-/users?name=farhan&rank=novice&sort=-name,level
-```
+| Operator  | SQL equivalent      | Notes                                 |
+|-----------|---------------------|---------------------------------------|
+| `eq`      | `= ?`               | Default when no operator bracket used |
+| `neq`     | `!= ?`              |                                       |
+| `like`    | `LIKE ?`            | Value wrapped in `%…%` automatically  |
+| `gt`      | `> ?`               |                                       |
+| `gte`     | `>= ?`              |                                       |
+| `lt`      | `< ?`               |                                       |
+| `lte`     | `<= ?`              |                                       |
+| `in`      | `IN (?)`            | Comma-separated string → array        |
+| `between` | `BETWEEN ? AND ?`   | Comma-separated, exactly 2 values     |
 
-That's it!
+### Security
+
+Only fields listed in `$filterable` can be filtered. Unlisted fields are silently ignored. Values are bound via PDO prepared statements — no SQL injection risk.
+
+## Breaking Changes from v1
+
+| Area | v1 | v2 |
+|------|----|----|
+| Query params | `?name=farhan` | `?filters[name]=farhan` |
+| Laravel support | 7–12 | 9–13 |
+| PHP minimum | 7.4 | 8.1 |
+| Lumen | Supported | Dropped |
+| `$filterable` empty | All params passed through | All filtering disabled |
+| `Filter::__call__` | Auto-proxied to Builder | Removed — use `$this->query` directly |
+| `Filter::sort()` | On Filter base class | Moved to Filterable trait |
 
 ## Credits
 
