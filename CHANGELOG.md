@@ -12,6 +12,8 @@ All notable changes to `Laravel Model Filter` will be documented in this file.
 - Relationship filtering via dot-notation in `$filterable` (e.g. `role.name`)
 - `FilterCondition` value object
 - `FilterInput` static parser with field and operator allowlists
+- `php artisan make:filter {name}` command to scaffold filter classes (`--force` to overwrite)
+- `ModelFilterServiceProvider` — auto-discovered via Composer; no manual registration needed
 - Full test suite (Pest)
 
 ### Changed
