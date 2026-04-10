@@ -11,7 +11,7 @@ A flexible Eloquent model filter for Laravel with operator support, OR grouping,
 ## Requirements
 
 - PHP 8.1+
-- Laravel 9–13
+- Laravel 9 - 13
 
 ## Installation
 
@@ -44,7 +44,15 @@ class User extends Model
 }
 ```
 
-Optionally create `App/Filters/UserFilter` to override specific fields:
+Optionally scaffold a filter class with the Artisan command:
+
+```bash
+php artisan make:filter UserFilter
+```
+
+This creates `app/Filters/UserFilter.php`. Use `--force` to overwrite an existing file.
+
+Then add your custom methods:
 
 ```php
 namespace App\Filters;
@@ -81,35 +89,35 @@ $users = User::filter($request->all())->get();
 # Explicit operator
 ?filters[age][gte]=18
 
-# Multiple filters — all AND'd together
+# Multiple filters - all AND'd together
 ?filters[status]=active&filters[age][gte]=18
 
 # Multiple operators on same field
 ?filters[age][gte]=18&filters[age][lte]=65
 
-# OR group — produces: AND (name LIKE '%far%' OR email LIKE '%far%')
+# OR group - produces: AND (name LIKE '%far%' OR email LIKE '%far%')
 ?filters[or][name][like]=far&filters[or][email][like]=far
 
 # Relationship filtering
 ?filters[role.name][eq]=admin
 
-# Sort — top-level, not inside filters[]
+# Sort - top-level, not inside filters[]
 ?sort=name,-created_at
 ```
 
 ### Supported operators
 
-| Operator  | SQL equivalent      | Notes                                 |
-|-----------|---------------------|---------------------------------------|
-| `eq`      | `= ?`               | Default when no operator bracket used |
-| `neq`     | `!= ?`              |                                       |
-| `like`    | `LIKE ?`            | Value wrapped in `%…%` automatically  |
-| `gt`      | `> ?`               |                                       |
-| `gte`     | `>= ?`              |                                       |
-| `lt`      | `< ?`               |                                       |
-| `lte`     | `<= ?`              |                                       |
-| `in`      | `IN (?)`            | Comma-separated string → array        |
-| `between` | `BETWEEN ? AND ?`   | Comma-separated, exactly 2 values     |
+| Operator  | SQL equivalent    | Notes                                 |
+| --------- | ----------------- | ------------------------------------- |
+| `eq`      | `= ?`             | Default when no operator bracket used |
+| `neq`     | `!= ?`            |                                       |
+| `like`    | `LIKE ?`          | Value wrapped in `%…%` automatically  |
+| `gt`      | `> ?`             |                                       |
+| `gte`     | `>= ?`            |                                       |
+| `lt`      | `< ?`             |                                       |
+| `lte`     | `<= ?`            |                                       |
+| `in`      | `IN (?)`          | Comma-separated string → array        |
+| `between` | `BETWEEN ? AND ?` | Comma-separated, exactly 2 values     |
 
 ### Relationship filtering
 
@@ -170,19 +178,19 @@ protected array $filterable = ['active_admin'];
 
 ### Security
 
-Only fields listed in `$filterable` can be filtered. Unlisted fields are silently ignored. Values are bound via PDO prepared statements — no SQL injection risk.
+Only fields listed in `$filterable` can be filtered. Unlisted fields are silently ignored. Values are bound via PDO prepared statements - no SQL injection risk.
 
 ## Breaking Changes from v1
 
-| Area | v1 | v2 |
-|------|----|----|
-| Query params | `?name=farhan` | `?filters[name]=farhan` |
-| Laravel support | 7–12 | 9–13 |
-| PHP minimum | 7.4 | 8.1 |
-| Lumen | Supported | Dropped |
-| `$filterable` empty | All params passed through | All filtering disabled |
-| `Filter::__call__` | Auto-proxied to Builder | Removed — use `$this->query` directly |
-| `Filter::sort()` | On Filter base class | Moved to Filterable trait |
+| Area                | v1                        | v2                                    |
+| ------------------- | ------------------------- | ------------------------------------- |
+| Query params        | `?name=farhan`            | `?filters[name]=farhan`               |
+| Laravel support     | 7–12                      | 9–13                                  |
+| PHP minimum         | 7.4                       | 8.1                                   |
+| Lumen               | Supported                 | Dropped                               |
+| `$filterable` empty | All params passed through | All filtering disabled                |
+| `Filter::__call__`  | Auto-proxied to Builder   | Removed — use `$this->query` directly |
+| `Filter::sort()`    | On Filter base class      | Moved to Filterable trait             |
 
 ## Credits
 
