@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Builder;
+use Laraditz\ModelFilter\Filter;
+
+class {{ class }} extends Filter
+{
+    // Custom filter methods receive the parsed value and act on $this->query:
+    //
+    // public function status(mixed $value): void
+    // {
+    //     $this->query->where('status', $value);
+    // }
+}
